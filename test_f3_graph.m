@@ -1,11 +1,54 @@
 % this is eliminate mu on graph with V = 5
 
+%% Initialization
+clearvars;
+close all;
+clc;
 
-clear all; rng(2024);
-addpath /Users/leviathaniety/Documents/MATLAB/Functions;
-thein = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Input/";
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Output/";
-theplot = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Plots/";
+rng(2024, "twister");
+
+%% Locate project directories relative to this script
+scriptDir = string(fileparts(mfilename("fullpath")));
+
+% Add functions stored beside this script
+addpath(scriptDir);
+
+% Also add the Functions subdirectory, if present
+functionsDir = fullfile(scriptDir, "Functions");
+if isfolder(functionsDir)
+    addpath(functionsDir);
+end
+
+%% Input, output, and plot directories
+thein   = fullfile(scriptDir, "Input")  + string(filesep);
+theout  = fullfile(scriptDir, "Output") + string(filesep);
+theplot = fullfile(scriptDir, "Plots")  + string(filesep);
+
+% Create directories if necessary
+requiredFolders = [thein, theout, theplot];
+
+for folder = requiredFolders
+    if ~isfolder(folder)
+        mkdir(folder);
+    end
+end
+
+%% Check graph-kernel parameter files
+requiredFiles = ["peak.mat", "freq.mat"];
+
+for filename = requiredFiles
+    filepath = fullfile(scriptDir, filename);
+
+    if ~isfile(filepath)
+        error("Required graph parameter file is missing: %s", filepath);
+    end
+end
+
+% truf_test141.m loads peak.mat and freq.mat by filename.
+% Set the working directory so these files can be located reliably.
+cd(scriptDir);
+
+%% Experiment name
 thedoc = "test_f3_graph_eliminatemu";
 
 %% parameters
@@ -572,11 +615,22 @@ for iepoch = 1:num_epoch
                     Eobk1k2 = Eob{k1,k2};
                     % compute grad from dK
 
-                    dBdK_k1k2 = zeros(N+Nprime,N);
-                    for ib = id_type1
-                        % sum over batch
-                        dBdK_k1k2 = dBdK_k1k2 + Eobk1k2(:,N*(ib-1)+1:N*ib).*kron(tmp(N*(ib-1)+1:N*ib), ones(N+Nprime,1));
-                    end
+                    %%% old
+                    % dBdK_k1k2 = zeros(N+Nprime,N);
+                    % for ib = id_type1
+                    %     % sum over batch
+                    %     dBdK_k1k2 = dBdK_k1k2 + Eobk1k2(:,N*(ib-1)+1:N*ib).*kron(tmp(N*(ib-1)+1:N*ib), ones(N+Nprime,1));
+                    % end
+                    E_reshaped = reshape( ...
+                        full(Eobk1k2), [N+Nprime, N, batch_size]);
+
+                    tmp_reshaped = reshape( ...
+                        tmp, [1, N, batch_size]);
+
+                    dBdK_k1k2 = sum( ...
+                        E_reshaped(:,:,id_type1) .* ...
+                        tmp_reshaped(:,:,id_type1), 3);
+
                     % clear dBdK_k1k2_alongbatch
                     % reshape dK to dPhi
                     dBdK_k1k2_extend = zeros(N+Nprime,N+Nprime);
