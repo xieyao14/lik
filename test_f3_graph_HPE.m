@@ -1,9 +1,56 @@
-clear all; rng(2024);
-addpath /Users/leviathaniety/Documents/MATLAB/mosek/9.3/toolbox/r2015a/;
-addpath /Users/leviathaniety/Documents/MATLAB/Functions;
-thein = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Input/";
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Output/";
-theplot = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Plots/";
+%% Initialization
+clearvars;
+close all;
+clc;
+
+rng(2024, "twister");
+
+%% Locate project directories relative to this script
+scriptDir = string(fileparts(mfilename("fullpath")));
+
+if strlength(scriptDir) == 0
+    scriptDir = string(pwd);
+end
+
+% Make project functions available
+addpath(scriptDir);
+
+functionsDir = fullfile(scriptDir, "Functions");
+if isfolder(functionsDir)
+    addpath(functionsDir);
+end
+
+%% Input, output, and plot directories
+thein   = fullfile(scriptDir, "Input")  + string(filesep);
+theout  = fullfile(scriptDir, "Output") + string(filesep);
+theplot = fullfile(scriptDir, "Plots")  + string(filesep);
+
+% Create required directories
+requiredFolders = [thein, theout, theplot];
+
+for folder = requiredFolders
+    if ~isfolder(folder)
+        mkdir(folder);
+    end
+end
+
+%% Check graph parameter files
+requiredFiles = ["peak.mat", "freq.mat"];
+
+for filename = requiredFiles
+    filepath = fullfile(scriptDir, filename);
+
+    if ~isfile(filepath)
+        error("Required graph parameter file is missing: %s", filepath);
+    end
+end
+
+% Some graph functions load peak.mat and freq.mat by filename
+originalDir = pwd;
+restoreDir = onCleanup(@() cd(originalDir));
+cd(scriptDir);
+
+%% Experiment name
 thedoc = "test_f3_graph_HPE";
 
 
