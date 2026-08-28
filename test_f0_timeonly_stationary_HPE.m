@@ -1,11 +1,38 @@
-clear all; rng(2024);
-addpath /Users/leviathaniety/Documents/MATLAB/mosek/9.3/toolbox/r2015a/;
-addpath /Users/leviathaniety/Documents/MATLAB/Functions;
-thein = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Input/";
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Output/";
-theplot = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Plots/";
-thedoc = "test_f0_timeonly_stationary_HPE";
+%% Initialization
+clearvars;
+close all;
+clc;
 
+rng(2024, "twister");
+
+%% Locate project directories relative to this script
+scriptDir = string(fileparts(mfilename("fullpath")));
+
+% Add functions stored beside this script
+addpath(scriptDir);
+
+% Also add the Functions subdirectory, if present
+functionsDir = fullfile(scriptDir, "Functions");
+if isfolder(functionsDir)
+    addpath(functionsDir);
+end
+
+%% Input, output, and plot directories
+thein   = fullfile(scriptDir, "Input")  + string(filesep);
+theout  = fullfile(scriptDir, "Output") + string(filesep);
+theplot = fullfile(scriptDir, "Plots")  + string(filesep);
+
+% Create directories if necessary
+requiredFolders = [thein, theout, theplot];
+
+for folder = requiredFolders
+    if ~isfolder(folder)
+        mkdir(folder);
+    end
+end
+
+%% Experiment name
+thedoc = "test_f0_timeonly_stationary_HPE";
 
 %% kenrel Psi
 N = 32; %320;
