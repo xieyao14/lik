@@ -379,11 +379,22 @@ for iepoch = 1:num_epoch
             dBdLambda = dBdLambda.*(Lambda < min_b);
     
             % compute grad from dK
-            dBdK_k1k2 = zeros(N+Nprime,N);
-            for ib = id_type1
-                % sum over batch
-                dBdK_k1k2 = dBdK_k1k2 + Eob11(:,N*(ib-1)+1:N*ib).*kron(dBdLambda(N*(ib-1)+1:N*ib), ones(N+Nprime,1));
-            end
+            E_reshaped = reshape( ...
+                full(Eobk1k2), [N+Nprime, N, batch_size]);
+
+            tmp_reshaped = reshape( ...
+                tmp, [1, N, batch_size]);
+
+            dBdK_k1k2 = sum( ...
+                E_reshaped(:,:,id_type1) .* ...
+                tmp_reshaped(:,:,id_type1), 3);
+            %%%%old
+            % dBdK_k1k2 = zeros(N+Nprime,N);
+            % for ib = id_type1
+            %     % sum over batch
+            %     dBdK_k1k2 = dBdK_k1k2 + Eob11(:,N*(ib-1)+1:N*ib).*kron(dBdLambda(N*(ib-1)+1:N*ib), ones(N+Nprime,1));
+            % end
+
             % clear dBdK_k1k2_alongbatch
             dBdK_k1k2_extend = zeros(N+Nprime,N+Nprime);
             dBdK_k1k2_extend(:,Nprime+1:Nprime+N) = dBdK_k1k2;
