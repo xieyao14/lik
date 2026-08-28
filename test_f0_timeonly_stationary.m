@@ -1,13 +1,48 @@
 % from test4.m
 % stationary kernel
 
-clear all; rng(2024);
+%% Initialization
+clearvars;
+close all;
+clc;
 
-addpath /Users/leviathaniety/Documents/MATLAB/Functions;
-thein = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Input/";
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Output/";
-theplot = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Plots/";
+rng(2024, "twister");
+
+%% Locate project directories relative to this script
+scriptDir = string(fileparts(mfilename("fullpath")));
+
+% Add local MATLAB functions
+addpath(scriptDir);
+
+functionsDir = fullfile(scriptDir, "Functions");
+if isfolder(functionsDir)
+    addpath(functionsDir);
+end
+
+%% Input, output, and figure directories
+thein   = fullfile(scriptDir, "Input")  + string(filesep);
+theout  = fullfile(scriptDir, "Output") + string(filesep);
+theplot = fullfile(scriptDir, "Plots")  + string(filesep);
+
+% Create directories if they do not already exist
+requiredFolders = [thein, theout, theplot];
+
+for folder = requiredFolders
+    if ~isfolder(folder)
+        mkdir(folder);
+    end
+end
+
+
+%% Experiment name
 thedoc = "test_f0_timeonly_stationary";
+
+%CodePackage/
+%├── test_f0_timeonly_stationary.m
+%├── Functions/
+%├── Input/
+%├── Output/
+%└── Plots/
 
 
 %% kenrel Psi
