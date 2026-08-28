@@ -1,8 +1,38 @@
-clear all; rng(2024);
-addpath /Users/leviathaniety/Documents/MATLAB/Functions;
-thein = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Input/";
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Output/";
-theplot = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Plots/";
+%% Initialization
+clearvars;
+close all;
+clc;
+
+rng(2024, "twister");
+
+%% Locate project directories relative to this script
+scriptDir = string(fileparts(mfilename("fullpath")));
+
+% Add functions stored beside this script
+addpath(scriptDir);
+
+% Also add the Functions subdirectory, if present
+functionsDir = fullfile(scriptDir, "Functions");
+if isfolder(functionsDir)
+    addpath(functionsDir);
+end
+
+%% Input, output, and plot directories
+thein   = fullfile(scriptDir, "Input")  + string(filesep);
+theout  = fullfile(scriptDir, "Output") + string(filesep);
+theplot = fullfile(scriptDir, "Plots")  + string(filesep);
+
+% Create directories if necessary
+requiredFolders = [thein, theout, theplot];
+
+for folder = requiredFolders
+    if ~isfolder(folder)
+        mkdir(folder);
+    end
+end
+
+%% Experiment name
+% Preserve "lowhdim" because existing output and table scripts use it.
 thedoc = "test_f2_timeonly_lowhdim";
 
 %% kernel Psi
