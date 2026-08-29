@@ -248,5 +248,7 @@ freq.mat
 
 ## Citation
 
-If you use this code, please cite the accompanying paper. Complete citation information will be added after publication.
+If you use this code, please cite the accompanying paper:
+Point processes with event time uncertainty.
+Xiuyuan Cheng, Tingnan Gong, Yao Xie. arXiv:2411.02694.
 
