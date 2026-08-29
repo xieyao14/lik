@@ -249,6 +249,6 @@ freq.mat
 ## Citation
 
 If you use this code, please cite the accompanying paper:  
-[Point processes with event time uncertainty.](https://arxiv.org/abs/2411.02694). 
+[Point processes with event time uncertainty.](https://arxiv.org/abs/2411.02694)   
 Xiuyuan Cheng, Tingnan Gong, Yao Xie. arXiv:2411.02694.  
 
