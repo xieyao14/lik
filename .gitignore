@@ -1,0 +1,17 @@
+# Generated experiment data and figures
+/Input/
+/Output/
+/Plots/
+
+# MATLAB editor and autosave files
+*.asv
+*.m~
+
+# macOS metadata
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Icon?
+.Spotlight-V100
+.Trashes

@@ -37,9 +37,10 @@ end
 %% Experiment name
 thedoc = "test_f0_timeonly_stationary";
 
+% Project layout (helper functions are stored in the project root):
 %CodePackage/
 %├── test_f0_timeonly_stationary.m
-%├── Functions/
+%├── *.m
 %├── Input/
 %├── Output/
 %└── Plots/
@@ -1067,5 +1068,4 @@ ax = gca;
 figH = gcf;
 set(figH, 'Units', 'points','OuterPosition', [0 0 235 235]) % standard size: 19.7 17.5
 exportgraphics(ax,strcat(theplot,thedoc,"_mu_all",".pdf")); 
-
 

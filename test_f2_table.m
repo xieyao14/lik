@@ -1,6 +1,9 @@
 %%
 
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/cluster_output/";
+scriptDir = string(fileparts(mfilename("fullpath")));
+addpath(scriptDir);
+theout = fullfile(scriptDir, "Output") + string(filesep);
+if ~isfolder(theout), mkdir(theout); end
 
 table_show = zeros([6,9]);
 table_full = zeros([3,9,10]);
@@ -100,7 +103,6 @@ for row = 1:6
     table_row = strcat(table_row, '\n');
     fprintf(table_row);
 end
-
 
 
 

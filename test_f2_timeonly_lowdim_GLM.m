@@ -1,8 +1,13 @@
 clear all; rng(2024);
-addpath /Users/leviathaniety/Documents/MATLAB/Functions;
-thein = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Input/";
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Output/";
-theplot = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Plots/";
+scriptDir = string(fileparts(mfilename("fullpath")));
+addpath(scriptDir);
+thein = fullfile(scriptDir, "Input") + string(filesep);
+theout = fullfile(scriptDir, "Output") + string(filesep);
+theplot = fullfile(scriptDir, "Plots") + string(filesep);
+requiredFolders = [thein, theout, theplot];
+for folder = requiredFolders
+    if ~isfolder(folder), mkdir(folder); end
+end
 thedoc = "test_f2_timeonly_lowhdim_GLM";
 
 %% kernel Psi
@@ -523,4 +528,3 @@ proberror = load(strcat(theout,thedoc,label,"_ProbPredErr",".mat"));
 proberror = proberror.proberror;
 mean_proberr = mean(proberror,1)
 std_proberr = std(proberror,1)
-

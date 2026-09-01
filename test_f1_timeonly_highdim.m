@@ -1,8 +1,13 @@
 clear all; rng(2024);
-addpath /Users/leviathaniety/Documents/MATLAB/Functions;
-thein = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Input/";
-theout = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Output/";
-theplot = "/Users/leviathaniety/Dropbox (GaTech)/PROJ-PointProcessWithUncertainty/Codes/CodePackage/Plots/";
+scriptDir = string(fileparts(mfilename("fullpath")));
+addpath(scriptDir);
+thein = fullfile(scriptDir, "Input") + string(filesep);
+theout = fullfile(scriptDir, "Output") + string(filesep);
+theplot = fullfile(scriptDir, "Plots") + string(filesep);
+requiredFolders = [thein, theout, theplot];
+for folder = requiredFolders
+    if ~isfolder(folder), mkdir(folder); end
+end
 thedoc = "test_f1_timeonly_highdim";
 
 %% kenrel Psi
@@ -1000,7 +1005,7 @@ ylabel('{Time index} $i$','fontsize',8,'interpreter','latex');
 drawnow();
 figH = gcf;
 set(figH, 'Units', 'points','OuterPosition', [0 0 157 180]) % standard size: 19.7 17.5
-exportgraphics(ax,strcat(theplot,thedoc,"_EstKer_SVDTrunc",label,".pdf"));  
+exportgraphics(ax,strcat(theplot,thedoc,"_EstKer_SVDTrunc",label,".pdf"));
 
 
 %% SVD truncation kernel
@@ -1074,4 +1079,4 @@ ylabel('{Time index} $i$','fontsize',8,'interpreter','latex');
 drawnow();
 figH = gcf;
 set(figH, 'Units', 'points','OuterPosition', [0 0 157 180]) % standard size: 19.7 17.5
-exportgraphics(ax,strcat(theplot,thedoc,"_EstKer_SVDTrunc",label,".pdf"));  
+exportgraphics(ax,strcat(theplot,thedoc,"_EstKer_SVDTrunc",label,".pdf"));
