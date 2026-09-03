@@ -371,8 +371,6 @@ nll_all = -likelihood_epoch;
 save(strcat(theout,thedoc,"_nllall.mat"), "nll_all");
 save(strcat(theout,thedoc,".mat"), "AB");
 
-return;
-
 
 %%
 nll_all = load(strcat(theout,thedoc,"_nllall.mat"));
@@ -463,6 +461,5 @@ fprintf(['-----Error Table----- \n' ...
 mean(proberror,1)
 std(proberror,1)
 save(strcat(theout,thedoc,"_ProbPredErr",".mat"), "proberror");
-
 
 
