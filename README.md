@@ -183,9 +183,22 @@ Run the corresponding `_HPE.m` driver once for each experiment family.
 
 ### 5. Aggregate repeated runs
 
-Tables 1, 2, 3, and A.1 report means and standard deviations over ten repetitions. The table scripts expect output files indexed by process identifiers `0:9`. Each repeated experiment should use a distinct random seed and include its process identifier in every output filename.
+Tables 1, 2, 3, and A.1 report means and standard deviations over ten repetitions. For Table 2, repetitions are identified as `replica_01` through `replica_10`; these are experiment identifiers, not operating-system process IDs. Each replica should eventually use a distinct documented random seed, shared by all methods evaluated on that replica.
 
-After all repetitions and methods have completed, run the corresponding table script. It reads the saved relative errors, computes means and standard deviations, multiplies them by 100, and prints LaTeX table rows.
+The Table 2 aggregator is a function and can be run even before result files exist:
+
+```matlab
+[table_show, table_full, report] = test_f1_table();
+```
+
+It validates all expected files, reports incomplete replicas without stopping, and aggregates only replicas for which every method is present. Once complete inputs exist, it computes paired means and sample standard deviations, multiplies them by 100, and prints paper-style LaTeX rows. Set `require_complete` to make missing inputs an error, or `save_summary` to save the returned arrays and report:
+
+```matlab
+options = struct('require_complete', true, 'save_summary', true);
+[table_show, table_full, report] = test_f1_table(options);
+```
+
+Table 2 filenames use the common prefix `test_f1_timeonly_highdim_replica_XX_`, followed by `TULIK_VI`, `TULIK_GD`, `GLM_L`, `GLM_S`, or `HPE` and the corresponding metric suffix. The method drivers still need to be updated to write this convention.
 
 ## Output files
 
@@ -215,7 +228,7 @@ The code-to-experiment correspondence is clear, but the current repository snaps
 
 4. **Graph time scale and smoothness.** The manuscript uses the horizon $[-0.8,3.2]$, with total length 4 and $h=0.1$. The current graph driver sets `ut=8`, giving `h=0.2`, while its kernel grid spans length 4. The manuscript reports $\delta_s=0.004$, whereas the current graph driver uses `smooth_weight = 0.1`.
 
-5. **Repeated-run naming.** The table scripts expect ten process-indexed output sets, but the local experiment drivers currently fix `rng(2024)` and do not add a process identifier to output filenames. Cluster-ready drivers or a common process-ID wrapper are needed.
+5. **Repeated-run generation.** The Table 2 aggregator uses ten replica identifiers, but the local experiment drivers currently fix `rng(2024)` and do not yet write replica-indexed filenames. A common replica runner and a new documented seed schedule are needed; the unavailable original cluster process IDs and seeds are not assumed.
 
 6. **Graph parameters.** `truf_test141.m` loads `peak.mat` and `freq.mat`. These files must be included to reproduce the graph kernel.
 
@@ -241,7 +254,7 @@ freq.mat
 | Synthetic time-only experiment drivers | Included |
 | Synthetic graph experiment drivers | Included, but `peak.mat` and `freq.mat` are required |
 | GLM-L, GLM-S, and HP-E baselines | Included |
-| Ten-repetition table aggregation | Included, but matching process-indexed drivers are needed |
+| Table 2 ten-repetition aggregation | Runnable with validation and incomplete-input reporting; matching replica drivers are still needed |
 | Sepsis experiment | Not included |
 | Atlanta burglary experiment | Not included |
 | Exact agreement between all manuscript and code settings | Requires resolution of the items above |
@@ -251,4 +264,3 @@ freq.mat
 If you use this code, please cite the accompanying paper:  
 [Point processes with event time uncertainty.](https://arxiv.org/abs/2411.02694)   
 Xiuyuan Cheng, Tingnan Gong, Yao Xie. arXiv:2411.02694.  
-
