@@ -198,7 +198,39 @@ options = struct('require_complete', true, 'save_summary', true);
 [table_show, table_full, report] = test_f1_table(options);
 ```
 
-Table 2 filenames use the common prefix `test_f1_timeonly_highdim_replica_XX_`, followed by `TULIK_VI`, `TULIK_GD`, `GLM_L`, `GLM_S`, or `HPE` and the corresponding metric suffix. The method drivers still need to be updated to write this convention.
+Table 2 filenames use the common prefix `test_f1_timeonly_highdim_replica_XX_`, followed by `TULIK_VI`, `TULIK_GD`, `GLM_L`, `GLM_S`, or `HPE` and the corresponding metric suffix. The pipeline below supplies this naming convention without modifying the method drivers.
+
+### Table 2 pipeline
+
+`run_f1_table_pipeline.m` runs the existing `f1` implementations for TULIK-VI,
+TULIK-GD, GLM-L, GLM-S, and HP-E, writes the replica-indexed artifacts expected
+by `test_f1_table.m`, and then performs the aggregation. Its full defaults match
+the current high-dimensional scripts: ten replicas, 40,000 simulated
+trajectories, 16,000 training trajectories, 500 test trajectories, 300 epochs,
+and batches of 400. Replica `01` uses seed 2024, replica `02` uses seed 2025,
+and so on through seed 2033; every method in one replica receives the same seed.
+
+Run the complete collection and aggregation with:
+
+```matlab
+report = run_f1_table_pipeline();
+```
+
+The run is resumable. By default, a method is skipped when all of the artifacts
+needed from that method already exist. Use `overwrite=true` only when existing
+replica outputs should be replaced. For example, to rerun replicas 3 and 4:
+
+```matlab
+options = struct('replica_ids', 3:4, 'overwrite', true);
+report = run_f1_table_pipeline(options);
+```
+
+The runner does not alter the method source files. It supplies run settings and
+output names at execution time, omits the legacy unused `eta_ob` allocation,
+and allows the existing GLM metric section after its early `return` to execute.
+Consequently, results from this pipeline describe the implementations currently
+in the repository; they should not be presented as an exact paper reproduction
+until the discrepancies under **Current reproduction notes** are resolved.
 
 ## Output files
 
@@ -228,7 +260,7 @@ The code-to-experiment correspondence is clear, but the current repository snaps
 
 4. **Graph time scale and smoothness.** The manuscript uses the horizon $[-0.8,3.2]$, with total length 4 and $h=0.1$. The current graph driver sets `ut=8`, giving `h=0.2`, while its kernel grid spans length 4. The manuscript reports $\delta_s=0.004$, whereas the current graph driver uses `smooth_weight = 0.1`.
 
-5. **Repeated-run generation.** The Table 2 aggregator uses ten replica identifiers, but the local experiment drivers currently fix `rng(2024)` and do not yet write replica-indexed filenames. A common replica runner and a new documented seed schedule are needed; the unavailable original cluster process IDs and seeds are not assumed.
+5. **Repeated-run generation.** The original cluster process IDs and seeds are unavailable. `run_f1_table_pipeline.m` therefore uses replica identifiers `01` through `10` and a documented replacement seed schedule, 2024 through 2033, shared across methods within each replica. These runs measure the current implementation but cannot recover the paper's exact random realizations.
 
 6. **Graph parameters.** `truf_test141.m` loads `peak.mat` and `freq.mat`. These files must be included to reproduce the graph kernel.
 
@@ -254,7 +286,7 @@ freq.mat
 | Synthetic time-only experiment drivers | Included |
 | Synthetic graph experiment drivers | Included, but `peak.mat` and `freq.mat` are required |
 | GLM-L, GLM-S, and HP-E baselines | Included |
-| Table 2 ten-repetition aggregation | Runnable with validation and incomplete-input reporting; matching replica drivers are still needed |
+| Table 2 ten-repetition pipeline | Runnable and resumable; generates current-method outputs and validates complete paired replicas |
 | Sepsis experiment | Not included |
 | Atlanta burglary experiment | Not included |
 | Exact agreement between all manuscript and code settings | Requires resolution of the items above |
