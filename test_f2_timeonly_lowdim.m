@@ -41,6 +41,8 @@ end
 % Preserve "lowhdim" because existing output and table scripts use it.
 thedoc = string(f2_option(f2_options, "output_document", ...
     "test_f2_timeonly_lowhdim"));
+show_figures = logical(f2_option(f2_options, "show_figures", true));
+validateattributes(show_figures, {'logical'}, {'scalar'});
 
 %% kernel Psi
 N = 32*1; %320;
@@ -73,7 +75,7 @@ psi = psi.*psi_mask;
 indm = sub2ind( [N+Nprime, Nprime], im, jm);
 vpsi = psi(indm); %[im,jm,vpsi] is the sparse repn of psi
 
-figure(2),clf;
+tulik_figure(2, show_figures),clf;
 subplot(121), imagesc(psi);
 title('Psi'); colorbar();
 subplot(122), spy(psi_mask);
@@ -108,7 +110,7 @@ assert( norm(jm - jm2)<1e-15);
 psi2 = sparse(im,jm, vk, N+Nprime, Nprime );
 assert( norm(psi - psi2)<1e-15);
 
-figure(3),clf;
+tulik_figure(3, show_figures),clf;
 subplot(121), imagesc(K);
 title('K'); colorbar();
 subplot(122), spy(K);
@@ -172,15 +174,15 @@ toc
 [min_lam_true,i_min]= min(min(lambda_true,[],2))
 max_lam_true= max(lambda_true(:))
 
-figure(4);clf;
+tulik_figure(4, show_figures);clf;
 imagesc(lambda_true); colorbar;
 title(sprintf('true lambda, min=%5.4f, max=%5.4f',min_lam_true,max_lam_true )); 
 
-figure(5),clf;
+tulik_figure(5, show_figures),clf;
 imagesc(y_ob);
 title('y observed')
 
-figure(6), clf; hold on;
+tulik_figure(6, show_figures), clf; hold on;
 plot(lambda_true(3:5:20,:)')
 plot(lambda_true(i_min,:)','.-')
 grid on;
@@ -467,8 +469,8 @@ for iepoch = 1:num_epoch
     X = X';
     theta_psi = X;
 
-    if mod(iepoch,10)==0
-        figure(9),clf;
+    if show_figures && mod(iepoch,10)==0
+        tulik_figure(9, show_figures),clf;
         imagesc(theta_psi); colorbar();
         title(sprintf('epoch %d',iepoch));
         drawnow();
@@ -550,7 +552,7 @@ save(strcat(theout,thedoc,label,".mat"), "X");
 % X = load(strcat(theout,thedoc,label,".mat"));
 % X = X.X;
 
-figure(12),clf;
+tulik_figure(12, show_figures),clf;
 fig = imagesc(reshape(X(:,1:Nprime,1),[N+Nprime,Nprime]), 'YData', [-Nprime, N]); 
 line([0,Nprime]+0.5, [0,-Nprime], 'Color', 'w','LineWidth',1);
 line([0,Nprime]+0.5, [N,N-Nprime], 'Color', 'w','LineWidth',1);
@@ -583,7 +585,7 @@ save(strcat(theout,thedoc,label,"_EstKerRelErr.mat"), "kernel_rela_err");
 %% mu
 save(strcat(theout,thedoc,label,"_mu.mat"), "mu");
 
-figure(7),clf;
+tulik_figure(7, show_figures),clf;
 
 box on;
 plot(1:iepoch, mu_all(1:iepoch),'.-','LineWidth',1);
@@ -609,7 +611,7 @@ mu_rela_err'
 save(strcat(theout,thedoc,label,"_EstMuRelErr.mat"), "mu_rela_err");
 
 %% likelihood plot
-figure(8),clf;
+tulik_figure(8, show_figures),clf;
 
 box on;
 plot(1:iepoch, nll_all(1:iepoch),'.-','LineWidth',1);
@@ -675,7 +677,7 @@ save(strcat(theout,thedoc,label,"_ProbPredErr",".mat"), "proberror");
 return;
 
 %% true kernel plot
-figure(2),clf;
+tulik_figure(2, show_figures),clf;
 fig = imagesc(reshape(psi(:,1:Nprime,1),[N+Nprime,Nprime]), 'YData', [-Nprime, N]); 
 line([0,Nprime]+0.5, [0,-Nprime], 'Color', 'w','LineWidth',1);
 line([0,Nprime]+0.5, [N,N-Nprime], 'Color', 'w','LineWidth',1);
@@ -764,7 +766,7 @@ if tmp1 && tmp2
     truLambda = sum(truP{1,1},1)+mu_true;
     truprob = (1-exp(-h.*truLambda));
 
-    figure(13),clf;
+    tulik_figure(13, show_figures),clf;
     ax = tiledlayout(floor(batch_size0/2),2);
 
     for b = 1:batch_size0
@@ -903,7 +905,7 @@ if tmp1 && tmp2
     truLambda = sum(truP{1,1},1)+mu_true;
     truprob = (1-exp(-h.*truLambda));
 
-    figure(13),clf;
+    tulik_figure(13, show_figures),clf;
     ax = tiledlayout(floor(batch_size0/2),2);
 
     for b = 1:batch_size0
@@ -983,7 +985,7 @@ if tmp1 && tmp2
     truLambda = sum(truP{1,1},1)+mu_true;
     truprob = (1-exp(-h.*truLambda));
 
-    figure(13),clf;
+    tulik_figure(13, show_figures),clf;
     ax = tiledlayout(1,3);
 
     for b = 1:batch_size0
@@ -1064,7 +1066,7 @@ if tmp1 && tmp2
     truLambda = sum(truP{1,1},1)+mu_true;
     truprob = (1-exp(-h.*truLambda));
 
-    figure(13),clf;
+    tulik_figure(13, show_figures),clf;
     ax = tiledlayout(1,3);
 
     for b = 1:batch_size0
@@ -1121,7 +1123,7 @@ nll_all_GD = nll_all.nll_all;
 nll_all = load(strcat(theout,thedoc,"VI","_TrainLogLike",".mat"));
 nll_all_VI = nll_all.nll_all;
 
-figure(8),clf;
+tulik_figure(8, show_figures),clf;
 
 box on;
 plot(1:num_epoch, nll_all_GD,'-.', 'linewidth', 1, 'Color', [1,0,0,0.5]);
@@ -1148,7 +1150,7 @@ mu_all = load(strcat(theout,thedoc,"VI","_mu_all.mat"));
 mu_all_VI = mu_all.mu_all;
 
 
-figure(7),clf;
+tulik_figure(7, show_figures),clf;
 
 box on;
 plot(1:num_epoch, mu_true*ones([num_epoch,1]),'-', 'linewidth', 1.5, 'Color', [0 0 0 0.3]);

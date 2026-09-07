@@ -17,6 +17,8 @@ for folder = requiredFolders
 end
 thedoc = string(f1_option(f1_options, "output_document", ...
     "test_f1_timeonly_highdim_HPE"));
+show_figures = logical(f1_option(f1_options, "show_figures", true));
+validateattributes(show_figures, {'logical'}, {'scalar'});
 
 
 %% kenrel Psi
@@ -50,7 +52,7 @@ psi = psi.*psi_mask;
 indm = sub2ind( [N+Nprime, Nprime], im, jm);
 vpsi = psi(indm); %[im,jm,vpsi] is the sparse repn of psi
 
-figure(2),clf;
+tulik_figure(2, show_figures),clf;
 subplot(121), imagesc(psi);
 title('Psi'); colorbar();
 subplot(122), spy(psi_mask);
@@ -85,7 +87,7 @@ assert( norm(jm - jm2)<1e-15);
 psi2 = sparse(im,jm, vk, N+Nprime, Nprime );
 assert( norm(psi - psi2)<1e-15);
 
-figure(3),clf;
+tulik_figure(3, show_figures),clf;
 subplot(121), imagesc(K);
 title('K'); colorbar();
 subplot(122), spy(K);
@@ -149,15 +151,15 @@ toc
 [min_lam_true,i_min]= min(min(lambda_true,[],2))
 max_lam_true= max(lambda_true(:))
 
-figure(4);clf;
+tulik_figure(4, show_figures);clf;
 imagesc(lambda_true); colorbar;
 title(sprintf('true lambda, min=%5.4f, max=%5.4f',min_lam_true,max_lam_true )); 
 
-figure(5),clf;
+tulik_figure(5, show_figures),clf;
 imagesc(y_ob);
 title('y observed')
 
-figure(6), clf; hold on;
+tulik_figure(6, show_figures), clf; hold on;
 plot(lambda_true(3:5:20,:)')
 plot(lambda_true(i_min,:)','.-')
 grid on;
@@ -379,8 +381,8 @@ while iepoch < num_epoch  % epoch -> batch -> fold
     end
     %% training likelihood
     likelihood_epoch(iepoch) = mean(likelihood_batch);  
-    if 1
-        figure(19),clf;
+    if show_figures
+        tulik_figure(19, show_figures),clf;
         hold on;
         plot(1:iepoch, likelihood_epoch(1:iepoch),'x-');
         grid on;
@@ -398,7 +400,7 @@ save(strcat(theout,thedoc,".mat"), "AB");
 %%
 nll_all = load(strcat(theout,thedoc,"_nllall.mat"));
 nll_all = nll_all.nll_all;
-figure(19),clf;
+tulik_figure(19, show_figures),clf;
 
 box on;
 plot( 1:iepoch, nll_all, '.-');

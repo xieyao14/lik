@@ -269,6 +269,15 @@ complete paired replicas contribute to the displayed means and sample standard
 deviations. As with f1, this pipeline reports what the current implementations
 produce and does not assert exact agreement with the paper.
 
+Both table pipelines set `show_figures=false` by default. The method drivers
+skip periodic training-progress plots and keep all remaining figures offscreen;
+exported PDF plots are still produced. Numbered diagnostic figures therefore
+no longer surface in the MATLAB desktop. Pass
+`struct('show_figures', true)` to a pipeline to display the progress and exported
+figures. A method script run directly retains its original visible-figure
+behavior; set the corresponding `f1_options.show_figures` or
+`f2_options.show_figures` field to `false` to hide its figures.
+
 Both experiment families retain seed 2024 when a method script is run directly
 without an options struct. Pipeline runs override that default with the replica
 seed. This keeps standalone behavior reproducible while avoiding hard-coded
