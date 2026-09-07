@@ -1,14 +1,22 @@
-clear all; rng(2024);
+% Optional run controls preserve the original standalone defaults.
+if ~exist("f2_options", "var")
+    f2_options = struct();
+end
+clearvars -except f2_options;
+rng(f2_option(f2_options, "seed", 2024));
 scriptDir = string(fileparts(mfilename("fullpath")));
 addpath(scriptDir);
 thein = fullfile(scriptDir, "Input") + string(filesep);
-theout = fullfile(scriptDir, "Output") + string(filesep);
-theplot = fullfile(scriptDir, "Plots") + string(filesep);
+theout = string(f2_option(f2_options, "output_dir", ...
+    fullfile(scriptDir, "Output"))) + string(filesep);
+theplot = string(f2_option(f2_options, "plot_dir", ...
+    fullfile(scriptDir, "Plots"))) + string(filesep);
 requiredFolders = [thein, theout, theplot];
 for folder = requiredFolders
     if ~isfolder(folder), mkdir(folder); end
 end
-thedoc = "test_f2_timeonly_lowdim_HPE";
+thedoc = string(f2_option(f2_options, "output_document", ...
+    "test_f2_timeonly_lowdim_HPE"));
 
 
 %% kernel Psi
@@ -98,10 +106,11 @@ phi_func = @(x) 1-exp(-x);
 mu_true = 0.2; %0.125; 
     %mu = 0.2 for N= 320
 
-M = 40000; %40000;
+M = f2_option(f2_options, "num_trajectories", 40000); %40000
+validateattributes(M, {'numeric'}, ...
+    {'scalar', 'integer', '>=', 18, 'finite'});
 y_ob = false(M, Nprime+N);
 
-eta_ob = false(M, Nprime+N, N);
 lambda_true = zeros(M,N);
 
 disp('generating trajectories...')
@@ -122,7 +131,6 @@ for i = 1: Nprime+N
     else
         t = i-Nprime;
         ypre = y_ob(:, t:t+Nprime-1);
-        eta_ob(:, t:t+Nprime-1, t)= ypre;
         kernelt = K(t:t+Nprime-1,t);
         lambdat =sum(bsxfun(@times, kernelt, ypre' ),1)'+ mu_true;
         if min(lambdat) < 0
@@ -159,8 +167,15 @@ grid on;
 event_data = y_ob;
 
 
-ntr = 16000; %32000; %16000;
-nte = min(500,M -ntr);
+ntr = f2_option(f2_options, "num_train", 16000); %32000; %16000
+validateattributes(ntr, {'numeric'}, ...
+    {'scalar', 'integer', 'positive', '<', M});
+requested_nte = f2_option(f2_options, "num_test", 500);
+validateattributes(requested_nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
+nte = min(requested_nte, M-ntr);
+validateattributes(nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
 
 tmp = randperm(M);
 idx_tr = tmp(1:ntr);
@@ -192,13 +207,21 @@ event_data_te = cont_event_data(idx_te);
 
 
 %% training hyperparameters
-num_epoch = 300;
+num_epoch = f2_option(f2_options, "num_epochs", 300);
+validateattributes(num_epoch, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
 
 
 
-batch_size = 400;
+batch_size = f2_option(f2_options, "batch_size", 400);
+validateattributes(batch_size, {'numeric'}, ...
+    {'scalar', 'integer', 'positive', '<=', ntr});
+assert(mod(ntr, batch_size) == 0, ...
+    "batch_size must divide the training-set size exactly.");
 batch_size_schedule = batch_size*ones(num_epoch,1);
 eta_schedule = 0.02*ones(num_epoch,1);
+
+clear f2_options requested_nte;
 
 iepoch = 0;
 likelihood_epoch = zeros(num_epoch,1);
@@ -462,4 +485,10 @@ mean(proberror,1)
 std(proberror,1)
 save(strcat(theout,thedoc,"_ProbPredErr",".mat"), "proberror");
 
-
+function value = f2_option(options, name, default_value)
+if isfield(options, name)
+    value = options.(name);
+else
+    value = default_value;
+end
+end

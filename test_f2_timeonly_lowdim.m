@@ -1,9 +1,13 @@
 %% Initialization
-clearvars;
+% Optional run controls preserve the original standalone defaults.
+if ~exist("f2_options", "var")
+    f2_options = struct();
+end
+clearvars -except f2_options;
 close all;
 clc;
 
-rng(2024, "twister");
+rng(f2_option(f2_options, "seed", 2024), "twister");
 
 %% Locate project directories relative to this script
 scriptDir = string(fileparts(mfilename("fullpath")));
@@ -19,8 +23,10 @@ end
 
 %% Input, output, and plot directories
 thein   = fullfile(scriptDir, "Input")  + string(filesep);
-theout  = fullfile(scriptDir, "Output") + string(filesep);
-theplot = fullfile(scriptDir, "Plots")  + string(filesep);
+theout = string(f2_option(f2_options, "output_dir", ...
+    fullfile(scriptDir, "Output"))) + string(filesep);
+theplot = string(f2_option(f2_options, "plot_dir", ...
+    fullfile(scriptDir, "Plots"))) + string(filesep);
 
 % Create directories if necessary
 requiredFolders = [thein, theout, theplot];
@@ -33,7 +39,8 @@ end
 
 %% Experiment name
 % Preserve "lowhdim" because existing output and table scripts use it.
-thedoc = "test_f2_timeonly_lowhdim";
+thedoc = string(f2_option(f2_options, "output_document", ...
+    "test_f2_timeonly_lowhdim"));
 
 %% kernel Psi
 N = 32*1; %320;
@@ -122,10 +129,11 @@ phi_func = @(x) 1-exp(-x);
 mu_true = 0.2; %0.125; 
     %mu = 0.2 for N= 320
 
-M = 40000; %40000;
+M = f2_option(f2_options, "num_trajectories", 40000); %40000
+validateattributes(M, {'numeric'}, ...
+    {'scalar', 'integer', '>=', 18, 'finite'});
 y_ob = false(M, Nprime+N);
 
-eta_ob = false(M, Nprime+N, N);
 lambda_true = zeros(M,N);
 
 disp('generating trajectories...')
@@ -146,7 +154,6 @@ for i = 1: Nprime+N
     else
         t = i-Nprime;
         ypre = y_ob(:, t:t+Nprime-1);
-        eta_ob(:, t:t+Nprime-1, t)= ypre;
         kernelt = K(t:t+Nprime-1,t);
         lambdat =sum(bsxfun(@times, kernelt, ypre' ),1)'+ mu_true;
         if min(lambdat) < 0
@@ -183,8 +190,15 @@ grid on;
 %% split data
 event_data = y_ob;
 
-ntr = 16000; %32000; %16000;
-nte = min(500,M -ntr);
+ntr = f2_option(f2_options, "num_train", 16000); %32000; %16000
+validateattributes(ntr, {'numeric'}, ...
+    {'scalar', 'integer', 'positive', '<', M});
+requested_nte = f2_option(f2_options, "num_test", 500);
+validateattributes(requested_nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
+nte = min(requested_nte, M-ntr);
+validateattributes(nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
 
 tmp = randperm(M);
 idx_tr = tmp(1:ntr);
@@ -208,7 +222,7 @@ X = zeros(Nprime+N, Nprime); %initial matrix
 %theta_psi = psi*v1(:,1)*v1(:,1)';
 
 %% kernel recovery
-use_VI = 0;
+use_VI = logical(f2_option(f2_options, "use_VI", false));
 
 % barrier hyper parameter
 min_b = 0.01; %0.03;
@@ -220,15 +234,34 @@ mode = "eliminate";
 %lr_schedule = [0.4*ones(50,1), 0.2*ones(50,1), 0.1*ones(50,1) ];
 if use_VI
     label = "VI";
-    lr_schedule = [0.4*ones(100,1), 0.2*ones(100,1), 0.2*ones(100,1) ]/10;
+    default_lr_schedule = ...
+        [0.4*ones(100,1); 0.2*ones(100,1); 0.2*ones(100,1)]/10;
 else
     label = "GD";
-    lr_schedule = [0.2*ones(100,1), 0.1*ones(100,1), 0.1*ones(100,1) ]/10;
+    default_lr_schedule = ...
+        [0.2*ones(100,1); 0.1*ones(100,1); 0.1*ones(100,1)]/10;
 end
+lr_schedule = f2_option(f2_options, ...
+    "learning_rate_schedule", default_lr_schedule);
+lr_schedule = lr_schedule(:);
+validateattributes(lr_schedule, {'numeric'}, ...
+    {'vector', 'real', 'finite', 'positive'});
 
-bs_schedule = [400*ones(100,1), 400*ones(100,1), 400*ones(100,1) ];
+default_batch_size = f2_option(f2_options, "batch_size", 400);
+bs_schedule = f2_option(f2_options, "batch_size_schedule", ...
+    default_batch_size*ones(size(lr_schedule)));
+bs_schedule = bs_schedule(:);
+validateattributes(bs_schedule, {'numeric'}, ...
+    {'vector', 'integer', 'positive'});
+assert(numel(bs_schedule) == numel(lr_schedule), ...
+    "Batch-size and learning-rate schedules must have the same length.");
+assert(all(bs_schedule <= ntr), ...
+    "Every batch size must be no larger than the training-set size.");
+assert(all(mod(ntr, bs_schedule) == 0), ...
+    "Each batch size must divide the training-set size exactly.");
 
-num_epoch = numel(lr_schedule );
+num_epoch = numel(lr_schedule);
+clear f2_options default_lr_schedule default_batch_size requested_nte;
 
 nll_all = zeros(num_epoch,1);
 err1_kernel_all = zeros(num_epoch,1);
@@ -1133,4 +1166,12 @@ set(gca,'FontSize',8);
 ax = gca;
 figH = gcf;
 set(figH, 'Units', 'points','OuterPosition', [0 0 235 235]) % standard size: 19.7 17.5
-exportgraphics(ax,strcat(theplot,thedoc,"_mu_all",".pdf")); 
+exportgraphics(ax,strcat(theplot,thedoc,"_mu_all",".pdf"));
+
+function value = f2_option(options, name, default_value)
+if isfield(options, name)
+    value = options.(name);
+else
+    value = default_value;
+end
+end

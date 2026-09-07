@@ -82,9 +82,11 @@ The baseline and table scripts are:
 - `test_f2_timeonly_lowdim_HPE.m`;
 - `test_f2_table.m`.
 
-`run_f2_table_pipeline.m` supplies replica seeds and output names to these
-current implementations, gathers the nine metrics needed per replica, and
-invokes `test_f2_table.m` without changing the method files or hyperparameters.
+The f2 drivers accept an `f2_options` struct for operational settings such as
+the random seed, data counts, output names, and run length. Their standalone
+defaults and numerical methods are unchanged. `run_f2_table_pipeline.m`
+supplies those options, gathers the nine metrics needed per replica, and
+invokes `test_f2_table.m`.
 
 Additional `f2` scripts are development or sensitivity experiments and are not directly reported in the current paper:
 
@@ -202,7 +204,7 @@ options = struct('require_complete', true, 'save_summary', true);
 [table_show, table_full, report] = test_f1_table(options);
 ```
 
-Table 2 filenames use the common prefix `test_f1_timeonly_highdim_replica_XX_`, followed by `TULIK_VI`, `TULIK_GD`, `GLM_L`, `GLM_S`, or `HPE` and the corresponding metric suffix. The pipeline below supplies this naming convention without modifying the method drivers.
+Table 2 filenames use the common prefix `test_f1_timeonly_highdim_replica_XX_`, followed by `TULIK_VI`, `TULIK_GD`, `GLM_L`, `GLM_S`, or `HPE` and the corresponding metric suffix. The pipeline below supplies this naming convention through each driver's `f1_options` struct.
 
 ### Table 2 pipeline
 
@@ -229,11 +231,14 @@ options = struct('replica_ids', 3:4, 'overwrite', true);
 report = run_f1_table_pipeline(options);
 ```
 
-The runner does not alter the method source files. It supplies run settings and
-output names at execution time, omits the legacy unused `eta_ob` allocation,
-and allows the existing GLM metric section after its early `return` to execute.
-Consequently, results from this pipeline describe the implementations currently
-in the repository; they should not be presented as an exact paper reproduction
+The f1 drivers expose operational controls through `f1_options`, and the runner
+calls those scripts directly. Seed selection, data counts, output names, method
+selection, and shortened validation schedules no longer require source edits or
+runtime text replacement. The original defaults are retained. The unused
+`eta_ob` allocation was removed, and an option allows the GLM drivers to
+continue into their existing metric section. Neither change affects fitted
+values. Results from this pipeline describe the implementations currently in
+the repository; they should not be presented as an exact paper reproduction
 until the discrepancies under **Current reproduction notes** are resolved.
 
 ### Table 1 pipeline
@@ -263,6 +268,11 @@ Missing or malformed artifacts are reported and represented by `NaN`; only
 complete paired replicas contribute to the displayed means and sample standard
 deviations. As with f1, this pipeline reports what the current implementations
 produce and does not assert exact agreement with the paper.
+
+Both experiment families retain seed 2024 when a method script is run directly
+without an options struct. Pipeline runs override that default with the replica
+seed. This keeps standalone behavior reproducible while avoiding hard-coded
+seeds in repeated-run orchestration.
 
 ## Output files
 

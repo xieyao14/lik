@@ -8,8 +8,10 @@ rng(f1_option(f1_options, "seed", 2024));
 scriptDir = string(fileparts(mfilename("fullpath")));
 addpath(scriptDir);
 thein = fullfile(scriptDir, "Input") + string(filesep);
-theout = fullfile(scriptDir, "Output") + string(filesep);
-theplot = fullfile(scriptDir, "Plots") + string(filesep);
+theout = string(f1_option(f1_options, "output_dir", ...
+    fullfile(scriptDir, "Output"))) + string(filesep);
+theplot = string(f1_option(f1_options, "plot_dir", ...
+    fullfile(scriptDir, "Plots"))) + string(filesep);
 requiredFolders = [thein, theout, theplot];
 for folder = requiredFolders
     if ~isfolder(folder), mkdir(folder); end
@@ -104,7 +106,8 @@ mu_true = 0.2; %0.125;
     %mu = 0.2 for N= 320
 
 M = f1_option(f1_options, "num_trajectories", 40000);
-validateattributes(M, {'numeric'}, {'scalar', 'integer', 'positive'});
+validateattributes(M, {'numeric'}, ...
+    {'scalar', 'integer', '>=', 18, 'finite'});
 y_ob = false(M, Nprime+N);
 
 lambda_true = zeros(M,N);
