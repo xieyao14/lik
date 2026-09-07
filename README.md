@@ -82,6 +82,10 @@ The baseline and table scripts are:
 - `test_f2_timeonly_lowdim_HPE.m`;
 - `test_f2_table.m`.
 
+`run_f2_table_pipeline.m` supplies replica seeds and output names to these
+current implementations, gathers the nine metrics needed per replica, and
+invokes `test_f2_table.m` without changing the method files or hyperparameters.
+
 Additional `f2` scripts are development or sensitivity experiments and are not directly reported in the current paper:
 
 - `test_f2_timeonly_lowdim_stationary.m`: fits a stationary kernel restriction to the nonstationary simulated data;
@@ -183,7 +187,7 @@ Run the corresponding `_HPE.m` driver once for each experiment family.
 
 ### 5. Aggregate repeated runs
 
-Tables 1, 2, 3, and A.1 report means and standard deviations over ten repetitions. For Table 2, repetitions are identified as `replica_01` through `replica_10`; these are experiment identifiers, not operating-system process IDs. Each replica should eventually use a distinct documented random seed, shared by all methods evaluated on that replica.
+Tables 1, 2, 3, and A.1 report means and standard deviations over ten repetitions. For the f1 and f2 pipelines, repetitions are identified as `replica_01` through `replica_10`; these are experiment identifiers, not operating-system process IDs. Each replica uses a distinct documented random seed, shared by all methods evaluated on that replica.
 
 The Table 2 aggregator is a function and can be run even before result files exist:
 
@@ -232,6 +236,34 @@ Consequently, results from this pipeline describe the implementations currently
 in the repository; they should not be presented as an exact paper reproduction
 until the discrepancies under **Current reproduction notes** are resolved.
 
+### Table 1 pipeline
+
+`run_f2_table_pipeline.m` provides the corresponding workflow for the smaller
+$N=32$, $N'=8$ experiment. Its defaults preserve the current f2 driver settings:
+40,000 simulated trajectories, 16,000 training trajectories, 500 test
+trajectories, 300 epochs, and batches of 400. It uses the same replacement seed
+schedule, 2024 through 2033, and writes the replica-indexed artifacts consumed
+by `test_f2_table.m`.
+
+Run the complete workflow with:
+
+```matlab
+report = run_f2_table_pipeline();
+```
+
+The f2 runner has the same resumable behavior and options as the f1 runner. The
+aggregator can also be called independently when no results exist or only some
+replicas are complete:
+
+```matlab
+[table_show, table_full, report] = test_f2_table();
+```
+
+Missing or malformed artifacts are reported and represented by `NaN`; only
+complete paired replicas contribute to the displayed means and sample standard
+deviations. As with f1, this pipeline reports what the current implementations
+produce and does not assert exact agreement with the paper.
+
 ## Output files
 
 The proposed-method drivers save the following main objects:
@@ -260,7 +292,7 @@ The code-to-experiment correspondence is clear, but the current repository snaps
 
 4. **Graph time scale and smoothness.** The manuscript uses the horizon $[-0.8,3.2]$, with total length 4 and $h=0.1$. The current graph driver sets `ut=8`, giving `h=0.2`, while its kernel grid spans length 4. The manuscript reports $\delta_s=0.004$, whereas the current graph driver uses `smooth_weight = 0.1`.
 
-5. **Repeated-run generation.** The original cluster process IDs and seeds are unavailable. `run_f1_table_pipeline.m` therefore uses replica identifiers `01` through `10` and a documented replacement seed schedule, 2024 through 2033, shared across methods within each replica. These runs measure the current implementation but cannot recover the paper's exact random realizations.
+5. **Repeated-run generation.** The original cluster process IDs and seeds are unavailable. `run_f1_table_pipeline.m` and `run_f2_table_pipeline.m` therefore use replica identifiers `01` through `10` and a documented replacement seed schedule, 2024 through 2033, shared across methods within each replica. These runs measure the current implementations but cannot recover the paper's exact random realizations.
 
 6. **Graph parameters.** `truf_test141.m` loads `peak.mat` and `freq.mat`. These files must be included to reproduce the graph kernel.
 
@@ -286,6 +318,7 @@ freq.mat
 | Synthetic time-only experiment drivers | Included |
 | Synthetic graph experiment drivers | Included, but `peak.mat` and `freq.mat` are required |
 | GLM-L, GLM-S, and HP-E baselines | Included |
+| Table 1 ten-repetition pipeline | Runnable and resumable; generates current-method outputs and validates complete paired replicas |
 | Table 2 ten-repetition pipeline | Runnable and resumable; generates current-method outputs and validates complete paired replicas |
 | Sepsis experiment | Not included |
 | Atlanta burglary experiment | Not included |
