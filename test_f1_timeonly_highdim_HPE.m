@@ -1,14 +1,24 @@
-clear all; rng(2024);
+% Optional run controls preserve the original standalone defaults.
+if ~exist("f1_options", "var")
+    f1_options = struct();
+end
+clearvars -except f1_options;
+rng(f1_option(f1_options, "seed", 2024));
 scriptDir = string(fileparts(mfilename("fullpath")));
 addpath(scriptDir);
 thein = fullfile(scriptDir, "Input") + string(filesep);
-theout = fullfile(scriptDir, "Output") + string(filesep);
-theplot = fullfile(scriptDir, "Plots") + string(filesep);
+theout = string(f1_option(f1_options, "output_dir", ...
+    fullfile(scriptDir, "Output"))) + string(filesep);
+theplot = string(f1_option(f1_options, "plot_dir", ...
+    fullfile(scriptDir, "Plots"))) + string(filesep);
 requiredFolders = [thein, theout, theplot];
 for folder = requiredFolders
     if ~isfolder(folder), mkdir(folder); end
 end
-thedoc = "test_f1_timeonly_highdim_HPE";
+thedoc = string(f1_option(f1_options, "output_document", ...
+    "test_f1_timeonly_highdim_HPE"));
+show_figures = logical(f1_option(f1_options, "show_figures", true));
+validateattributes(show_figures, {'logical'}, {'scalar'});
 
 
 %% kenrel Psi
@@ -42,7 +52,7 @@ psi = psi.*psi_mask;
 indm = sub2ind( [N+Nprime, Nprime], im, jm);
 vpsi = psi(indm); %[im,jm,vpsi] is the sparse repn of psi
 
-figure(2),clf;
+tulik_figure(2, show_figures),clf;
 subplot(121), imagesc(psi);
 title('Psi'); colorbar();
 subplot(122), spy(psi_mask);
@@ -77,7 +87,7 @@ assert( norm(jm - jm2)<1e-15);
 psi2 = sparse(im,jm, vk, N+Nprime, Nprime );
 assert( norm(psi - psi2)<1e-15);
 
-figure(3),clf;
+tulik_figure(3, show_figures),clf;
 subplot(121), imagesc(K);
 title('K'); colorbar();
 subplot(122), spy(K);
@@ -98,10 +108,11 @@ phi_func = @(x) 1-exp(-x);
 mu_true = 0.2; %0.125; 
     %mu = 0.2 for N= 320
 
-M = 40000; %40000;
+M = f1_option(f1_options, "num_trajectories", 40000); %40000
+validateattributes(M, {'numeric'}, ...
+    {'scalar', 'integer', '>=', 18, 'finite'});
 y_ob = false(M, Nprime+N);
 
-eta_ob = false(M, Nprime+N, N);
 lambda_true = zeros(M,N);
 
 disp('generating trajectories...')
@@ -122,7 +133,6 @@ for i = 1: Nprime+N
     else
         t = i-Nprime;
         ypre = y_ob(:, t:t+Nprime-1);
-        eta_ob(:, t:t+Nprime-1, t)= ypre;
         kernelt = K(t:t+Nprime-1,t);
         lambdat =sum(bsxfun(@times, kernelt, ypre' ),1)'+ mu_true;
         if min(lambdat) < 0
@@ -141,15 +151,15 @@ toc
 [min_lam_true,i_min]= min(min(lambda_true,[],2))
 max_lam_true= max(lambda_true(:))
 
-figure(4);clf;
+tulik_figure(4, show_figures);clf;
 imagesc(lambda_true); colorbar;
 title(sprintf('true lambda, min=%5.4f, max=%5.4f',min_lam_true,max_lam_true )); 
 
-figure(5),clf;
+tulik_figure(5, show_figures),clf;
 imagesc(y_ob);
 title('y observed')
 
-figure(6), clf; hold on;
+tulik_figure(6, show_figures), clf; hold on;
 plot(lambda_true(3:5:20,:)')
 plot(lambda_true(i_min,:)','.-')
 grid on;
@@ -159,8 +169,15 @@ grid on;
 event_data = y_ob;
 
 
-ntr = 16000; %32000; %16000;
-nte = min(500,M -ntr);
+ntr = f1_option(f1_options, "num_train", 16000); %32000; %16000
+validateattributes(ntr, {'numeric'}, ...
+    {'scalar', 'integer', 'positive', '<', M});
+requested_nte = f1_option(f1_options, "num_test", 500);
+validateattributes(requested_nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
+nte = min(requested_nte, M-ntr);
+validateattributes(nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
 
 tmp = randperm(M);
 idx_tr = tmp(1:ntr);
@@ -192,13 +209,21 @@ event_data_te = cont_event_data(idx_te);
 
 
 %% training hyperparameters
-num_epoch = 300;
+num_epoch = f1_option(f1_options, "num_epochs", 300);
+validateattributes(num_epoch, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
 
 
 
-batch_size = 400;
+batch_size = f1_option(f1_options, "batch_size", 400);
+validateattributes(batch_size, {'numeric'}, ...
+    {'scalar', 'integer', 'positive', '<=', ntr});
+assert(mod(ntr, batch_size) == 0, ...
+    "batch_size must divide the training-set size exactly.");
 batch_size_schedule = batch_size*ones(num_epoch,1);
 eta_schedule = 0.02*ones(num_epoch,1);
+
+clear f1_options requested_nte;
 
 iepoch = 0;
 likelihood_epoch = zeros(num_epoch,1);
@@ -356,8 +381,8 @@ while iepoch < num_epoch  % epoch -> batch -> fold
     end
     %% training likelihood
     likelihood_epoch(iepoch) = mean(likelihood_batch);  
-    if 1
-        figure(19),clf;
+    if show_figures
+        tulik_figure(19, show_figures),clf;
         hold on;
         plot(1:iepoch, likelihood_epoch(1:iepoch),'x-');
         grid on;
@@ -375,7 +400,7 @@ save(strcat(theout,thedoc,".mat"), "AB");
 %%
 nll_all = load(strcat(theout,thedoc,"_nllall.mat"));
 nll_all = nll_all.nll_all;
-figure(19),clf;
+tulik_figure(19, show_figures),clf;
 
 box on;
 plot( 1:iepoch, nll_all, '.-');
@@ -462,4 +487,10 @@ mean(proberror,1)
 std(proberror,1)
 save(strcat(theout,thedoc,"_ProbPredErr",".mat"), "proberror");
 
-
+function value = f1_option(options, name, default_value)
+if isfield(options, name)
+    value = options.(name);
+else
+    value = default_value;
+end
+end

@@ -1,14 +1,24 @@
-clear all; rng(2024);
+% Optional run controls preserve the original standalone defaults.
+if ~exist("f1_options", "var")
+    f1_options = struct();
+end
+clearvars -except f1_options;
+rng(f1_option(f1_options, "seed", 2024));
 scriptDir = string(fileparts(mfilename("fullpath")));
 addpath(scriptDir);
 thein = fullfile(scriptDir, "Input") + string(filesep);
-theout = fullfile(scriptDir, "Output") + string(filesep);
-theplot = fullfile(scriptDir, "Plots") + string(filesep);
+theout = string(f1_option(f1_options, "output_dir", ...
+    fullfile(scriptDir, "Output"))) + string(filesep);
+theplot = string(f1_option(f1_options, "plot_dir", ...
+    fullfile(scriptDir, "Plots"))) + string(filesep);
 requiredFolders = [thein, theout, theplot];
 for folder = requiredFolders
     if ~isfolder(folder), mkdir(folder); end
 end
-thedoc = "test_f1_timeonly_highdim_GLM";
+thedoc = string(f1_option(f1_options, "output_document", ...
+    "test_f1_timeonly_highdim_GLM"));
+show_figures = logical(f1_option(f1_options, "show_figures", true));
+validateattributes(show_figures, {'logical'}, {'scalar'});
 
 %% kenrel Psi
 N = 32*10; %320;
@@ -41,7 +51,7 @@ psi = psi.*psi_mask;
 indm = sub2ind( [N+Nprime, Nprime], im, jm);
 vpsi = psi(indm); %[im,jm,vpsi] is the sparse repn of psi
 
-figure(2),clf;
+tulik_figure(2, show_figures),clf;
 subplot(121), imagesc(psi);
 title('Psi'); colorbar();
 subplot(122), spy(psi_mask);
@@ -76,7 +86,7 @@ assert( norm(jm - jm2)<1e-15);
 psi2 = sparse(im,jm, vk, N+Nprime, Nprime );
 assert( norm(psi - psi2)<1e-15);
 
-figure(3),clf;
+tulik_figure(3, show_figures),clf;
 subplot(121), imagesc(K);
 title('K'); colorbar();
 subplot(122), spy(K);
@@ -97,10 +107,11 @@ phi_func = @(x) 1-exp(-x);
 mu_true = 0.2; %0.125; 
     %mu = 0.2 for N= 320
 
-M = 40000; %40000;
+M = f1_option(f1_options, "num_trajectories", 40000); %40000
+validateattributes(M, {'numeric'}, ...
+    {'scalar', 'integer', '>=', 18, 'finite'});
 y_ob = false(M, Nprime+N);
 
-eta_ob = false(M, Nprime+N, N);
 lambda_true = zeros(M,N);
 
 disp('generating trajectories...')
@@ -121,7 +132,6 @@ for i = 1: Nprime+N
     else
         t = i-Nprime;
         ypre = y_ob(:, t:t+Nprime-1);
-        eta_ob(:, t:t+Nprime-1, t)= ypre;
         kernelt = K(t:t+Nprime-1,t);
         lambdat =sum(bsxfun(@times, kernelt, ypre' ),1)'+ mu_true;
         if min(lambdat) < 0
@@ -140,15 +150,15 @@ toc
 [min_lam_true,i_min]= min(min(lambda_true,[],2))
 max_lam_true= max(lambda_true(:))
 
-figure(4);clf;
+tulik_figure(4, show_figures);clf;
 imagesc(lambda_true); colorbar;
 title(sprintf('true lambda, min=%5.4f, max=%5.4f',min_lam_true,max_lam_true )); 
 
-figure(5),clf;
+tulik_figure(5, show_figures),clf;
 imagesc(y_ob);
 title('y observed')
 
-figure(6), clf; hold on;
+tulik_figure(6, show_figures), clf; hold on;
 plot(lambda_true(3:5:20,:)')
 plot(lambda_true(i_min,:)','.-')
 grid on;
@@ -158,8 +168,15 @@ grid on;
 %% split data
 event_data = y_ob;
 
-ntr = 16000; %32000; %16000;
-nte = min(500,M -ntr);
+ntr = f1_option(f1_options, "num_train", 16000); %32000; %16000
+validateattributes(ntr, {'numeric'}, ...
+    {'scalar', 'integer', 'positive', '<', M});
+requested_nte = f1_option(f1_options, "num_test", 500);
+validateattributes(requested_nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
+nte = min(requested_nte, M-ntr);
+validateattributes(nte, {'numeric'}, ...
+    {'scalar', 'integer', 'positive'});
 
 tmp = randperm(M);
 idx_tr = tmp(1:ntr);
@@ -183,22 +200,46 @@ X = zeros(Nprime+N, Nprime); %initial matrix
 %theta_psi = psi*v1(:,1)*v1(:,1)';
 
 %% kernel recovery
-use_GLMI = 0;
+use_GLMI = logical(f1_option(f1_options, "use_GLMI", false));
 if use_GLMI
-    label = "GLMI";
+    default_label = "GLMI";
 else
-    label = "GLMS";
+    default_label = "GLMS";
 end
+label = string(f1_option(f1_options, "output_label", default_label));
+assert(isscalar(label) && strlength(label) > 0, ...
+    "output_label must be a nonempty string scalar.");
 warm_start = 0;
 
 mode = "eliminate";
 
 
 
-lr_schedule = [0.4*ones(100,1), 0.2*ones(100,1), 0.2*ones(100,1) ];
-bs_schedule = [400*ones(100,1), 400*ones(100,1), 400*ones(100,1) ];
+default_lr_schedule = [0.4*ones(100,1); 0.2*ones(100,1); 0.2*ones(100,1)];
+lr_schedule = f1_option(f1_options, ...
+    "learning_rate_schedule", default_lr_schedule);
+lr_schedule = lr_schedule(:);
+validateattributes(lr_schedule, {'numeric'}, ...
+    {'vector', 'real', 'finite', 'positive'});
 
-num_epoch = numel(lr_schedule );
+default_batch_size = f1_option(f1_options, "batch_size", 400);
+bs_schedule = f1_option(f1_options, "batch_size_schedule", ...
+    default_batch_size*ones(size(lr_schedule)));
+bs_schedule = bs_schedule(:);
+validateattributes(bs_schedule, {'numeric'}, ...
+    {'vector', 'integer', 'positive'});
+assert(numel(bs_schedule) == numel(lr_schedule), ...
+    "Batch-size and learning-rate schedules must have the same length.");
+assert(all(bs_schedule <= ntr), ...
+    "Every batch size must be no larger than the training-set size.");
+assert(all(mod(ntr, bs_schedule) == 0), ...
+    "Each batch size must divide the training-set size exactly.");
+
+num_epoch = numel(lr_schedule);
+compute_table_metrics = logical(f1_option( ...
+    f1_options, "compute_table_metrics", false));
+validateattributes(compute_table_metrics, {'logical'}, {'scalar'});
+clear f1_options default_lr_schedule default_batch_size default_label requested_nte;
 
 nll_all = zeros(num_epoch,1);
 err1_kernel_all = zeros(num_epoch,1);
@@ -251,7 +292,7 @@ for iepoch = 1:num_epoch
 
 
 
-        if strcmp(label, "GLMI")
+        if use_GLMI
             prob = Lambda;
             low = (prob<0);
             high = (prob>1);
@@ -339,13 +380,13 @@ for iepoch = 1:num_epoch
     
     theta_psi = X;
 
-    if mod(iepoch,10)==0
-        figure(9),clf;
+    if show_figures && mod(iepoch,10)==0
+        tulik_figure(9, show_figures),clf;
         imagesc(theta_psi); colorbar();
         title(sprintf('epoch %d',iepoch));
         drawnow();
 
-        figure(19),clf;
+        tulik_figure(19, show_figures),clf;
         subplot(121),
         plot( 1:iepoch-1, nll_all(1:iepoch-1), '.-');
         grid on; title('tr nll'); set(gca,'FontSize',15);
@@ -384,7 +425,7 @@ for iepoch = 1:num_epoch
     for b = 1:nte
         lam_val(b,:) = reshape((Lambda_te(:,(b-1)*N+1:b*N))',[N*1,1]);
     end
-    if strcmp(label, "GLMI")
+    if use_GLMI
         prob = lam_val;
         low = (prob<0);
         high = (prob>1);
@@ -428,12 +469,14 @@ end
 save(strcat(theout,thedoc,label,".mat"), "X");
 save(strcat(theout,thedoc,label,"_mu.mat"), "mu");
 
-return;
+if ~compute_table_metrics
+    return;
+end
 
 
 
 %% likelihood plot
-figure(8),clf;
+tulik_figure(8, show_figures),clf;
 
 box on;
 plot(1:iepoch, nll_all(1:iepoch),'.-','LineWidth',1);
@@ -459,7 +502,7 @@ lambda_te = zeros(N*1, nte);
 for b = 1:nte
     lambda_te(:,b) = reshape((Lambda_te(:,(b-1)*N+1:b*N))',[N*1,1]);
 end
-if strcmp(label, "GLMI")
+if use_GLMI
     prob = lambda_te;
     low = (prob<0);
     high = (prob>1);
@@ -529,3 +572,11 @@ proberror = load(strcat(theout,thedoc,label,"_ProbPredErr",".mat"));
 proberror = proberror.proberror;
 mean_proberr = mean(proberror,1)
 std_proberr = std(proberror,1)
+
+function value = f1_option(options, name, default_value)
+if isfield(options, name)
+    value = options.(name);
+else
+    value = default_value;
+end
+end
