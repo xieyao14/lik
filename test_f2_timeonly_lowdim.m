@@ -407,7 +407,10 @@ for iepoch = 1:num_epoch
     
             % compute grad from dK
             dBdK_k1k2 = zeros(N+Nprime,N);
-            for ib = id_type1
+            % FIND returns a column vector here. Iterate over its transpose so
+            % each loop index is scalar when more than one trajectory violates
+            % the intensity bound.
+            for ib = id_type1.'
                 % sum over batch
                 dBdK_k1k2 = dBdK_k1k2 + Eob11(:,N*(ib-1)+1:N*ib).*kron(dBdLambda(N*(ib-1)+1:N*ib), ones(N+Nprime,1));
             end
