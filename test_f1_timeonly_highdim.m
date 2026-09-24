@@ -96,9 +96,6 @@ psi_sub = psi(Nprime: N, :);
 [~,s1,v1]= svd(psi_sub, "econ");
 s_true = diag(s1);
 
-svd_thres = .2; %target rank depends on the accuracy of recovery
-                %with finite sample, the recovered psi before truncation is like psi plus noise   
-
 %%
 
 %% generate traj
@@ -209,9 +206,11 @@ mode = "eliminate";
 %lr_schedule = [0.4*ones(50,1), 0.2*ones(50,1), 0.1*ones(50,1) ];
 if use_VI
     label = "VI";
+    svd_thres = 0.6;
     default_lr_schedule = [0.4*ones(100,1); 0.2*ones(100,1); 0.2*ones(100,1)];
 else
     label = "GD";
+    svd_thres = 0.8;
     default_lr_schedule = [0.2*ones(100,1); 0.1*ones(100,1); 0.1*ones(100,1)];
 end
 lr_schedule = f1_option(f1_options, "learning_rate_schedule", default_lr_schedule);
@@ -517,6 +516,18 @@ for iepoch = 1:num_epoch
 
    
 end
+
+%% low-rank truncation after the stochastic optimization loops
+[~,s2,v2] = svd(X(Nprime+1:N, :), "econ");
+s2 = diag(s2);
+rkpsi = max(1, sum(s2 > svd_thres));
+if rkpsi < Nprime
+    v2proj = v2(:,1:rkpsi);
+    X = (X*v2proj)*v2proj';
+end
+theta_psi = X;
+fprintf('post-training SVD truncation: threshold=%g, rank=%d\n', ...
+    svd_thres, rkpsi);
 
 %% kernel
 save(strcat(theout,thedoc,label,".mat"), "X");
