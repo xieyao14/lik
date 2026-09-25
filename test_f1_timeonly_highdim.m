@@ -4,7 +4,7 @@ if ~exist("f1_options", "var")
     f1_options = struct();
 end
 clearvars -except f1_options;
-rng(f1_option(f1_options, "seed", 2024));
+rng(f1_option(f1_options, "seed", 2024), "twister");
 scriptDir = string(fileparts(mfilename("fullpath")));
 addpath(scriptDir);
 thein = fullfile(scriptDir, "Input") + string(filesep);
@@ -195,6 +195,9 @@ X = zeros(Nprime+N, Nprime); %initial matrix
 
 %% kernel recovery
 use_VI = logical(f1_option(f1_options, "use_VI", true));
+apply_low_rank_truncation = logical(f1_option( ...
+    f1_options, "apply_low_rank_truncation", true));
+validateattributes(apply_low_rank_truncation, {'logical'}, {'scalar'});
 
 % barrier hyper parameter
 min_b = 0.01; %0.03;
@@ -517,17 +520,21 @@ for iepoch = 1:num_epoch
    
 end
 
-%% low-rank truncation after the stochastic optimization loops
-[~,s2,v2] = svd(X(Nprime+1:N, :), "econ");
-s2 = diag(s2);
-rkpsi = max(1, sum(s2 > svd_thres));
-if rkpsi < Nprime
-    v2proj = v2(:,1:rkpsi);
-    X = (X*v2proj)*v2proj';
+%% optional low-rank truncation after the stochastic optimization loops
+if apply_low_rank_truncation
+    [~,s2,v2] = svd(X(Nprime+1:N, :), "econ");
+    s2 = diag(s2);
+    rkpsi = max(1, sum(s2 > svd_thres));
+    if rkpsi < Nprime
+        v2proj = v2(:,1:rkpsi);
+        X = (X*v2proj)*v2proj';
+    end
+    fprintf('post-training SVD truncation: threshold=%g, rank=%d\n', ...
+        svd_thres, rkpsi);
+else
+    fprintf('post-training SVD truncation: disabled\n');
 end
 theta_psi = X;
-fprintf('post-training SVD truncation: threshold=%g, rank=%d\n', ...
-    svd_thres, rkpsi);
 
 %% kernel
 save(strcat(theout,thedoc,label,".mat"), "X");

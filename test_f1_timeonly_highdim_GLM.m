@@ -3,7 +3,7 @@ if ~exist("f1_options", "var")
     f1_options = struct();
 end
 clearvars -except f1_options;
-rng(f1_option(f1_options, "seed", 2024));
+rng(f1_option(f1_options, "seed", 2024), "twister");
 scriptDir = string(fileparts(mfilename("fullpath")));
 addpath(scriptDir);
 thein = fullfile(scriptDir, "Input") + string(filesep);
